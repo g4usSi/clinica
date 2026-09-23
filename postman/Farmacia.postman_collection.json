@@ -1,0 +1,134 @@
+{
+  "info": {
+    "name": "Clinica - Farmacia",
+    "description": "Ejecutar en orden. Configurar la variable password con la clave del superusuario antes de empezar.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{farmacia_access_token}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "farmacia_base_url", "value": "http://127.0.0.1:8000" },
+    { "key": "username", "value": "gio" },
+    { "key": "password", "value": "123456" },
+    { "key": "farmacia_access_token", "value": "" },
+    { "key": "farmacia_refresh_token", "value": "" },
+    { "key": "farmacia_medicamento_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Login",
+      "request": {
+        "method": "POST",
+        "auth": { "type": "noauth" },
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}", "options": { "raw": { "language": "json" } } },
+        "url": "{{farmacia_base_url}}/api/auth/login/"
+      },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Login correcto', () => pm.response.to.have.status(200));",
+        "const data = pm.response.json();",
+        "pm.collectionVariables.set('farmacia_access_token', data.access);",
+        "pm.collectionVariables.set('farmacia_refresh_token', data.refresh);"
+      ] } }]
+    },
+    {
+      "name": "2. Crear medicamento",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"name\": \"Paracetamol 500 mg\",\n  \"description\": \"Caja de 20 tabletas\",\n  \"stock\": 30,\n  \"price\": \"12.50\"\n}", "options": { "raw": { "language": "json" } } },
+        "url": "{{farmacia_base_url}}/api/farmacia/medicamentos/"
+      },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Medicamento creado', () => pm.response.to.have.status(201));",
+        "pm.collectionVariables.set('farmacia_medicamento_id', pm.response.json().id);"
+      ] } }]
+    },
+    {
+      "name": "3. Listar medicamentos",
+      "request": { "method": "GET", "url": "{{farmacia_base_url}}/api/farmacia/medicamentos/" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Lista disponible', () => pm.response.to.have.status(200));"
+      ] } }]
+    },
+    {
+      "name": "4. Filtrar por nombre",
+      "request": { "method": "GET", "url": "{{farmacia_base_url}}/api/farmacia/medicamentos/?name=para" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Filtro disponible', () => pm.response.to.have.status(200));"
+      ] } }]
+    },
+    {
+      "name": "5. Ver medicamento",
+      "request": { "method": "GET", "url": "{{farmacia_base_url}}/api/farmacia/medicamentos/{{farmacia_medicamento_id}}/" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Detalle disponible', () => pm.response.to.have.status(200));"
+      ] } }]
+    },
+    {
+      "name": "6. Reemplazar medicamento",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"name\": \"Paracetamol 500 mg\",\n  \"description\": \"Caja de 20 tabletas\",\n  \"stock\": 25,\n  \"price\": \"13.00\"\n}", "options": { "raw": { "language": "json" } } },
+        "url": "{{farmacia_base_url}}/api/farmacia/medicamentos/{{farmacia_medicamento_id}}/"
+      },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Medicamento reemplazado', () => pm.response.to.have.status(200));",
+        "pm.test('Stock actualizado', () => pm.expect(pm.response.json().stock).to.eql(25));"
+      ] } }]
+    },
+    {
+      "name": "7. Actualizar stock",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"stock\": 20\n}", "options": { "raw": { "language": "json" } } },
+        "url": "{{farmacia_base_url}}/api/farmacia/medicamentos/{{farmacia_medicamento_id}}/"
+      },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Stock actualizado', () => pm.response.to.have.status(200));",
+        "pm.test('Stock es 20', () => pm.expect(pm.response.json().stock).to.eql(20));"
+      ] } }]
+    },
+    {
+      "name": "8. Validar stock negativo",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"stock\": -1\n}", "options": { "raw": { "language": "json" } } },
+        "url": "{{farmacia_base_url}}/api/farmacia/medicamentos/{{farmacia_medicamento_id}}/"
+      },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Stock negativo rechazado', () => pm.response.to.have.status(400));"
+      ] } }]
+    },
+    {
+      "name": "9. Refrescar token",
+      "request": {
+        "method": "POST",
+        "auth": { "type": "noauth" },
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"refresh\": \"{{farmacia_refresh_token}}\"\n}", "options": { "raw": { "language": "json" } } },
+        "url": "{{farmacia_base_url}}/api/auth/refresh/"
+      },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Token renovado', () => pm.response.to.have.status(200));",
+        "const data = pm.response.json();",
+        "pm.collectionVariables.set('farmacia_access_token', data.access);",
+        "if (data.refresh) pm.collectionVariables.set('farmacia_refresh_token', data.refresh);"
+      ] } }]
+    },
+    {
+      "name": "10. Eliminar medicamento",
+      "request": { "method": "DELETE", "url": "{{farmacia_base_url}}/api/farmacia/medicamentos/{{farmacia_medicamento_id}}/" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Medicamento eliminado', () => pm.response.to.have.status(204));"
+      ] } }]
+    }
+  ]
+}
+
+
